@@ -10,6 +10,7 @@ class ContentType(Enum):
     json = 'application/json'
     ssz = 'application/ssz'
 
+
 @unique
 class Method(Enum):
     GET = 'GET'

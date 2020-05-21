@@ -82,4 +82,3 @@ class Eth2API(ModelAPIEndpoint, Protocol):
 
     beacon: BeaconAPI
     network: NetworkAPI
-

@@ -1,4 +1,4 @@
-from typing import Awaitable, cast, Type, Protocol, Union, Iterator, AsyncIterator, Any
+from typing import Awaitable, cast, Type, Any
 
 import httpx
 import urllib.parse
@@ -6,7 +6,7 @@ import urllib.parse
 from remerkleable.core import View
 
 from eth2.core import ModelAPIEndpoint, ContentType, APIPath, APIEndpointFn, APIResult, FromObjProtocol, \
-    APIMethodDecorator, APIProviderMethodImpl, ToObjProtocol, Method, Eth2Provider
+    APIMethodDecorator, APIProviderMethodImpl, ToObjProtocol, Eth2Provider
 from eth2.routes import Eth2API
 
 
@@ -55,7 +55,7 @@ class Eth2HttpProvider(Eth2Provider):
         self.options = options
         self._client = client
 
-    def api_req(self, end_point: APIPath) -> APIMethodDecorator:
+    def api_req(self, end_point: APIPath) -> APIMethodDecorator:  # noqa C901  TODO: split this up
         api = self
 
         def entry(fn: APIEndpointFn) -> APIProviderMethodImpl:
