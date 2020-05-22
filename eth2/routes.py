@@ -1,10 +1,11 @@
-from typing import Optional, Protocol
+from enum import Enum
+from typing import Optional, Protocol, TypeVar, List, Union, Sequence
 
 from eth2spec.phase0 import spec
 
 from remerkleable.complex import Container
 
-from eth2.core import ModelAPIEndpoint, ContentType, Method, api
+from eth2.core import ContentType, Method, api, FromObjProtocol, S, var_path
 
 
 class HeadInfo(spec.Container):
@@ -29,10 +30,87 @@ class APIBlock(Container):
     block: spec.SignedBeaconBlock
 
 
+class ValidatorStatus(Enum):
+    slashed = "slashed"
+    activation_queue = "activation_queue"
+    active = "active"
+    exit_queue = "exit_queue"
+    exited = "exited"
+    withdrawable = "withdrawable"
+
+
+class ValidatorInfo(FromObjProtocol):
+    validator: spec.Validator
+    status: ValidatorStatus
+    balance: spec.Gwei
+
+
+class ValidatorInfoList(List[ValidatorInfo], FromObjProtocol):
+    pass
+
+
 consensus_formats = {ContentType.json, ContentType.ssz}
 
 
-class BeaconAPI(ModelAPIEndpoint, Protocol):
+K = TypeVar('K')
+
+
+class StateID(Protocol[K]):
+
+    head: K
+    finalized: K
+    justified: K
+    genesis: K
+
+    @var_path()
+    def state_root(self, value: spec.Root) -> K:
+        ...
+
+    @var_path()
+    def slot(self, value: spec.Slot) -> K:
+        ...
+
+
+class ValidatorID(Protocol[K]):
+
+    @var_path()
+    def pubkey(self, value: spec.BLSPubkey) -> K:
+        ...
+
+    @var_path()
+    def index(self, value: spec.ValidatorIndex) -> K:
+        ...
+
+
+class BeaconStateValidatorAPI(Protocol):
+
+    @api()
+    async def __call__(self) -> ValidatorInfo:
+        ...
+
+
+# Routes can also be callable
+class BeaconStateValidatorsAPI(ValidatorID[BeaconStateValidatorAPI], Protocol):
+
+    @api()
+    async def __call__(self, validatorIds: Union[Sequence[spec.ValidatorIndex], Sequence[spec.BLSPubkey]]) -> ValidatorInfoList:  # TODO spec is inconsistent with casing
+        ...
+
+
+class BeaconStateAPI(Protocol):
+
+    @api(supports=consensus_formats)
+    async def root(self) -> spec.Root:
+        pass
+
+    @api(supports=consensus_formats)
+    async def fork(self) -> spec.Fork:
+        pass
+
+
+class BeaconAPI(Protocol):
+
+    states: StateID[BeaconStateAPI]
 
     @api(supports=consensus_formats)
     async def block(self, root: Optional[spec.Root] = None, slot: Optional[spec.Slot] = None) -> APIBlock:
@@ -64,11 +142,11 @@ class BeaconAPI(ModelAPIEndpoint, Protocol):
     # @api(spec.ProposerSlashing, method=Method.GET, name='proposer_slashing')
     # async def get_proposer_slashing(self) -> spec.ProposerSlashing: ...
 
-    @api(method=Method.POST, name='proposer_slashing', data='slashing')
+    @api(method=Method.POST, supports=consensus_formats, name='proposer_slashing', data='slashing')
     async def post_proposer_slashing(self, slashing: spec.ProposerSlashing) -> None: ...
 
 
-class NetworkAPI(ModelAPIEndpoint, Protocol):
+class NetworkAPI(Protocol):
 
     @api()
     async def enr(self) -> str:
@@ -77,7 +155,7 @@ class NetworkAPI(ModelAPIEndpoint, Protocol):
         """
 
 
-class Eth2API(ModelAPIEndpoint, Protocol):
+class Eth2API(Protocol):
     api_version: str
 
     beacon: BeaconAPI

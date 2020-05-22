@@ -1,12 +1,12 @@
-from typing import Awaitable, cast, Type, Any
+from typing import Awaitable, cast, Any, TypeVar
 
 import httpx
 import urllib.parse
 
 from remerkleable.core import View
 
-from eth2.core import ModelAPIEndpoint, ContentType, APIPath, APIEndpointFn, APIResult, FromObjProtocol, \
-    APIMethodDecorator, APIProviderMethodImpl, ToObjProtocol, Eth2Provider
+from eth2.core import ContentType, APIPath, APIEndpointFn, APIResult, FromObjProtocol, \
+    APIMethodDecorator, APIProviderMethodImpl, ToObjProtocol, Eth2Provider, Eth2EndpointImpl
 from eth2.routes import Eth2API
 
 
@@ -24,27 +24,7 @@ class Eth2HttpOptions(object):
         self.default_resp_type = default_resp_type
 
 
-class Eth2HTTPEndpoint(object):
-    prov: "Eth2HttpProvider"
-    path: APIPath
-    model: Type[ModelAPIEndpoint]
-
-    def __init__(self, prov: "Eth2HttpProvider", path: APIPath, model: Type[ModelAPIEndpoint]):
-        self.prov = prov
-        self.path = path
-        self.model = model
-
-    def __getattr__(self, item):
-        if hasattr(self.model, '__annotations__'):
-            annotations = self.model.__annotations__
-            if item in annotations:
-                return Eth2HTTPEndpoint(self.prov, APIPath(self.path + '/' + item), annotations[item])
-        if hasattr(self.model, item):
-            attr = getattr(self.model, item)
-            if isinstance(attr, APIEndpointFn):
-                path_name = attr.name if attr.name is not None else item
-                return self.prov.api_req(APIPath(self.path + '/' + path_name))(attr)
-        raise Exception
+M = TypeVar('M')
 
 
 class Eth2HttpProvider(Eth2Provider):
@@ -150,8 +130,19 @@ class Eth2HttpProvider(Eth2Provider):
 
     @property
     def api(self) -> Eth2API:
-        root_endpoint = Eth2HTTPEndpoint(self, APIPath(''), Eth2API)
+        root_endpoint = Eth2EndpointImpl(self, APIPath(''), Eth2API)
         return cast(Eth2API, root_endpoint)
+
+    def extended_api(self, model: M) -> M:
+        """
+        Hook any API model to the HTTP provider, to use custom APIs
+        :param model: the model, any APIEndpointFn, VariablePathSegmentFn or
+         just a class with methods annotated as such, or decorated as such.
+         Basically anything that can be understood as API model.
+        :return: An Eth2EndpointImpl which shadows the model, implementing it by calling HTTP functions.
+        """
+        root_endpoint = Eth2EndpointImpl(self, APIPath(''), model)
+        return cast(model, root_endpoint)
 
 
 class Eth2HttpClient(object):

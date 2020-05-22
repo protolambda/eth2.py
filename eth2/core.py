@@ -1,6 +1,6 @@
 from enum import Enum, unique
 
-from typing import Type, Optional, TypeVar, Protocol, NewType, Callable, Any, Sequence, Union, Set, runtime_checkable
+from typing import Type, Optional, TypeVar, Protocol, NewType, Callable, Any, Sequence, Generic, Union, Set, runtime_checkable
 
 from remerkleable.core import View, ObjType
 
@@ -29,7 +29,13 @@ S = TypeVar('S')
 @runtime_checkable
 class FromObjProtocol(Protocol):
     @classmethod
-    def from_obj(cls: Type[S], obj: ObjType) -> S: ...
+    def from_obj(cls: Type[S], obj: ObjType) -> S:
+        # Default implementation: try to expand the object into the constructor arguments
+        if isinstance(obj, dict):
+            return cls(**obj)
+        if isinstance(obj, (list, tuple)):
+            return cls(*obj)
+        return cls(obj)
 
 
 ResponseType = Union[ObjType, Type[FromObjProtocol], Type[View], None]
@@ -42,14 +48,52 @@ APIPath = NewType('APIEndpoint', str)
 APIMethod = NewType('APIMethod', Any)
 
 
-@runtime_checkable
-class ModelAPIEndpoint(Protocol):
-    pass
+P = TypeVar('P')
+
+
+class VariablePathSegment(Generic[P]):
+    model: Any
+    path: str
+
+    def __init__(self, model: Any, path: str):
+        self.model = model
+        self.path = path
+
+
+class VariablePathSegmentFn(Generic[P]):
+    out_model: Any
+    name: str
+    formatter: Callable[[P], str]
+
+    def __init__(self, out_model: Any, name: str, formatter: Callable[[P], str]):
+        self.out_model = out_model
+        self.name = name
+        self.formatter = formatter
+
+    def __call__(self, value: P):
+        path_segment = self.formatter(value)
+        return VariablePathSegment(self.out_model, path_segment)
+
+
+def var_path(formatter: Optional[Callable[[P], str]] = None, name: Optional[str] = None):
+    if formatter is None:
+        formatter = str  # format the input as str by default
+
+    def deco(fn):
+        if not hasattr(fn, '__annotations__'):
+            raise Exception("variable path function is missing annotations to derive implementation from")
+        if list(fn.__annotations__.keys()) != ['value', 'return']:
+            raise Exception(f"annotations for variable path segment are bad."
+                            f"Expected a 'value' input and a 'return'. But got {list(fn.__annotations__.keys())}")
+        out_model = fn.__annotations__['return']
+        segment_name = name if name is not None else fn.__name__
+        return VariablePathSegmentFn(out_model, segment_name, formatter)
+    return deco
 
 
 class APIEndpointFn(object):
     typ: ResponseType
-    name: Optional[str]
+    name: str
     arg_keys: Sequence[str]
     method: Method
     req_type: Optional[ContentType]
@@ -107,11 +151,12 @@ def api(method: Method = Method.GET,
     def entry(fn):
         # The fn is dropped, we don't run any of the model functions, they are *models*, for typing.
         annotations = fn.__annotations__
+        fn_name = name if name is not None else fn.__name__
 
         # Instead, we create this new function, annotated with data the Eth2 API provider may use.
         fn = APIEndpointFn()
         fn.typ = annotations['return'] if 'return' in annotations else None
-        fn.name = name
+        fn.name = fn_name
         fn.arg_keys = [key for key in annotations.keys() if key != 'return' and key != 'self']
         fn.method = method
         fn.req_type = req_type
@@ -126,3 +171,52 @@ def api(method: Method = Method.GET,
 class Eth2Provider(Protocol):
     def api_req(self, end_point: APIPath) -> APIMethodDecorator:
         ...
+
+
+class Eth2EndpointImpl(object):
+    """
+    This shadows the API Model, creating endpoints on the fly, and wrapping them with the Eth2 provider as necessary.
+    This way, the model can be a bare "Protocol" type, super easy to mock for testing,
+     generic between any Eth2 provider.
+    """
+    prov: Eth2Provider
+    path: APIPath
+    model: Any
+
+    def __init__(self, prov: Eth2Provider, path: APIPath, model: Any):
+        self.prov = prov
+        self.path = path
+        self.model = model
+
+    def __getattr__(self, item):
+        # If we are dealing with an opened variable path that yet needs a value, then
+        if isinstance(self.model, VariablePathSegmentFn):
+            raise Exception("Cannot get sub route in variable path segment, need variable first")
+        if hasattr(self.model, '__annotations__'):  # Sub routes in the model are just annotation fields
+            annotations = self.model.__annotations__
+            if item in annotations:
+                return Eth2EndpointImpl(self.prov, APIPath(self.path + '/' + item), annotations[item])
+        if hasattr(self.model, item):  # If not a sub-route, check if it's an APIEndpointFn
+            attr = getattr(self.model, item)
+            # If it's a an API function, then wrap it with the provider, and return the resulting callable.
+            if isinstance(attr, APIEndpointFn):
+                return self.prov.api_req(APIPath(self.path + '/' + attr.name))(attr)
+            # If it's a variable path segment, then continue building the endpoint path
+            if isinstance(attr, VariablePathSegmentFn):
+                return Eth2EndpointImpl(self.prov, APIPath(self.path + '/' + attr.name), attr)
+
+        raise AttributeError(f"unknown item '{item}', not a sub-route or APIEndpointFn")
+
+    def __call__(self, *args, **kwargs):
+        if not callable(self.model):
+            raise Exception(f"endpoint '{self.path}' is not callable")
+        # If this is a variable-path segment, then get the corresponding endpoint for the segment
+        if isinstance(self.model, VariablePathSegmentFn):
+            path_segment = self.model(*args, **kwargs)
+            return Eth2EndpointImpl(self.prov, APIPath(self.path + '/' + path_segment.path), path_segment.model)
+        # Otherwise, it may be a route that is callable itself. I.e. the model.__call__ is an APIEndpointFn
+        v = self.model.__call__
+        if isinstance(v, APIEndpointFn):
+            return self.prov.api_req(APIPath(self.path + '/' + v.name))(v)
+        # It's not part of the API, maybe just a helper method in the route model. Try calling the model definition.
+        return self.model(*args, **kwargs)
