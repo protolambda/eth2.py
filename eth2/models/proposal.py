@@ -87,4 +87,3 @@ class BeaconAPI(Protocol):
 
 
 # TODO: many more methods are missing. Update API to match latest API proposal
-

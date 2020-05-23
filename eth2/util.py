@@ -63,8 +63,10 @@ class ObjDict(Dict[_K, _V]):
 
     def __class_getitem__(cls, item: Tuple[Type[_K], Type[_V]]):
         kt, vt = item
+
         class TypedObjDict(cls):
             pass
+
         setattr(TypedObjDict, 'k_class', kt)
         setattr(TypedObjDict, 'v_class', vt)
         return TypedObjDict
@@ -110,7 +112,7 @@ def _json_loader(t, obj):
         return t(obj)
     else:
         if t.__origin__ is Union:
-            if len(t.__args__) != 2 or t.__args__[1] is not type(None):
+            if len(t.__args__) != 2 or t.__args__[1] is not type(None):  # noqa E721
                 raise Exception("Only Optional[V] is supported")
             if obj is None:
                 return None

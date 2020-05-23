@@ -46,6 +46,7 @@ class CommitteeInfo(ObjStruct):
 
 Shuffling = ObjList[CommitteeInfo]
 
+
 class ValidatorsQuery(ToObjProtocol):
     state_root: Optional[spec.Root]
     pubkeys: List[spec.BLSPubkey]
@@ -62,6 +63,7 @@ class ValidatorInfo(Container):
     validator_index: spec.ValidatorIndex
     balance: spec.Gwei
     validator: spec.Validator
+
 
 ValidatorInfos = spec.List[ValidatorInfo, spec.VALIDATOR_REGISTRY_LIMIT]
 
