@@ -1,13 +1,16 @@
-from typing import Awaitable, cast, Any, TypeVar
+from typing import Awaitable, cast, Any, TypeVar, Optional
 
+import json
+import dataclasses
 import httpx
 import urllib.parse
 
 from remerkleable.core import View
 
 from eth2.core import ContentType, APIPath, APIEndpointFn, APIResult, FromObjProtocol, \
-    APIMethodDecorator, APIProviderMethodImpl, ToObjProtocol, Eth2Provider, Eth2EndpointImpl
-from eth2.routes import Eth2API
+    APIMethodDecorator, APIProviderMethodImpl, Eth2Provider, Eth2EndpointImpl
+# from eth2.routes.proposal import Eth2API
+from eth2.util import ToObjProtocol
 
 
 class Eth2HttpOptions(object):
@@ -59,7 +62,7 @@ class Eth2HttpProvider(Eth2Provider):
                 else:
                     req_type = api.options.default_req_type
 
-                data_args = {}
+                data: Optional[bytes] = None
                 if fn.data is not None:
                     data_obj: Any
                     if fn.data in kwargs:
@@ -69,23 +72,24 @@ class Eth2HttpProvider(Eth2Provider):
 
                     if req_type == ContentType.json:
                         if isinstance(data_obj, (ToObjProtocol, View)):
-                            data_args['json'] = data_obj.to_obj()
-                        else:
-                            data_args['json'] = data_obj
+                            data_obj = data_obj.to_obj()
+                        data = json.dumps(data_obj).encode("utf-8")
                     elif req_type == ContentType.ssz:
                         if isinstance(data_obj, View):
-                            data_args['data'] = data_obj.encode_bytes()
+                            data = data_obj.encode_bytes()
                         else:
                             raise Exception(f"input {data_obj} is not a SSZ type")
 
                     headers['Content-Type'] = req_type.value
 
+                req_path = urllib.parse.urljoin(api.options.api_base_url, end_point)
                 resp = await api._client.request(
                     fn.method.value,
-                    urllib.parse.urljoin(api.options.api_base_url, end_point),
-                    **data_args,
+                    req_path,
+                    data=data,
                     # Normalize parameters
-                    params={k: (v.to_obj() if isinstance(v, ToObjProtocol) else v) for k, v in kwargs.items()},
+                    params={k: (v.to_obj() if isinstance(v, ToObjProtocol) else v)
+                            for k, v in kwargs.items() if v is not None},
                     headers=headers,
                 )
                 headers['Content-Type'] = req_type.value
@@ -117,6 +121,8 @@ class Eth2HttpProvider(Eth2Provider):
                         resp_data = None
                     elif isinstance(fn.typ, (FromObjProtocol, View)):
                         resp_data = fn.typ.from_obj(resp.json())
+                    elif dataclasses.is_dataclass(fn.typ):
+                        resp_data = fn.typ(**resp.json())
                     else:
                         resp_data = resp.json()
                 else:
@@ -128,10 +134,11 @@ class Eth2HttpProvider(Eth2Provider):
             return wrap_fn
         return entry
 
-    @property
-    def api(self) -> Eth2API:
-        root_endpoint = Eth2EndpointImpl(self, APIPath(''), Eth2API)
-        return cast(Eth2API, root_endpoint)
+    # TODO: expose standard API
+    # @property
+    # def api(self) -> Eth2API:
+    #     root_endpoint = Eth2EndpointImpl(self, APIPath(''), Eth2API)
+    #     return cast(Eth2API, root_endpoint)
 
     def extended_api(self, model: M) -> M:
         """
@@ -161,6 +168,9 @@ class Eth2HttpClient(object):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self._client.__aexit__(exc_type, exc_val, exc_tb)
 
-    @property
-    def api(self) -> Eth2API:
-        return self._prov.api
+    # @property
+    # def api(self) -> Eth2API:
+    #     return self._prov.api
+
+    def extended_api(self, model: M) -> M:
+        return self._prov.extended_api(model)

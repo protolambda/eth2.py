@@ -1,8 +1,9 @@
 from enum import Enum, unique
-
-from typing import Type, Optional, TypeVar, Protocol, NewType, Callable, Any, Sequence, Generic, Union, Set, runtime_checkable
+from typing import Type, Optional, TypeVar, Protocol, NewType, Callable, Any, Sequence, Generic, Union, Set
 
 from remerkleable.core import View, ObjType
+
+from eth2.util import FromObjProtocol
 
 
 @unique
@@ -18,26 +19,6 @@ class Method(Enum):
     PUT = 'PUT'
 
 
-@runtime_checkable
-class ToObjProtocol(Protocol):
-    def to_obj(self) -> ObjType: ...
-
-
-S = TypeVar('S')
-
-
-@runtime_checkable
-class FromObjProtocol(Protocol):
-    @classmethod
-    def from_obj(cls: Type[S], obj: ObjType) -> S:
-        # Default implementation: try to expand the object into the constructor arguments
-        if isinstance(obj, dict):
-            return cls(**obj)
-        if isinstance(obj, (list, tuple)):
-            return cls(*obj)
-        return cls(obj)
-
-
 ResponseType = Union[ObjType, Type[FromObjProtocol], Type[View], None]
 
 APIResult = TypeVar('APIResult', bound=Union[ObjType, FromObjProtocol, View, None])
@@ -48,10 +29,10 @@ APIPath = NewType('APIEndpoint', str)
 APIMethod = NewType('APIMethod', Any)
 
 
-P = TypeVar('P')
+_P = TypeVar('_P')
 
 
-class VariablePathSegment(Generic[P]):
+class VariablePathSegment(Generic[_P]):
     model: Any
     path: str
 
@@ -60,22 +41,23 @@ class VariablePathSegment(Generic[P]):
         self.path = path
 
 
-class VariablePathSegmentFn(Generic[P]):
+class VariablePathSegmentFn(Generic[_P]):
     out_model: Any
     name: str
-    formatter: Callable[[P], str]
+    formatter: Callable[[_P], str]
 
-    def __init__(self, out_model: Any, name: str, formatter: Callable[[P], str]):
+    def __init__(self, out_model: Any, name: str, formatter: Callable[[_P], str]):
         self.out_model = out_model
         self.name = name
         self.formatter = formatter
 
-    def __call__(self, value: P):
+    def __call__(self, value: _P):
         path_segment = self.formatter(value)
         return VariablePathSegment(self.out_model, path_segment)
 
 
-def var_path(formatter: Optional[Callable[[P], str]] = None, name: Optional[str] = None):
+def var_path(formatter: Optional[Callable[[_P], str]] = None,
+             name: Optional[str] = None) -> Callable[[Any], VariablePathSegmentFn[_P]]:
     if formatter is None:
         formatter = str  # format the input as str by default
 
@@ -122,9 +104,9 @@ class APIEndpointFn(object):
 
 APIProviderMethodImpl = Callable
 
-F = TypeVar('F')
+_F = TypeVar('_F')
 
-APIMethodDecorator = Callable[[F], F]
+APIMethodDecorator = Callable[[_F], _F]
 
 
 def api(method: Method = Method.GET,

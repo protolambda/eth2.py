@@ -3,8 +3,8 @@ import trio
 from eth2spec.phase0 import spec
 
 from eth2.core import ContentType, APIEndpointFn
-from eth2.routes import Eth2API, APIState
 from eth2.providers.http import Eth2HttpClient, Eth2HttpOptions
+from eth2.routes.lighthouse import Eth2API, APIState
 
 
 async def fun(api: Eth2API):
@@ -43,7 +43,7 @@ async def start():
             api_base_url=address,
             default_req_type=ContentType.json,
             default_resp_type=ContentType.ssz)) as prov:
-        await fun(prov.api)
+        await fun(prov.extended_api(Eth2API))
     print("done!")
 
 trio.run(start)
