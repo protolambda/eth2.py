@@ -187,18 +187,20 @@ class NetworkAPI(Protocol):
 
 class ForkchoiceNode(ObjStruct):
     slot: spec.Slot
+    state_root: spec.Root
     root: spec.Root
     parent: Optional[int]
     justified_epoch: spec.Epoch
     finalized_epoch: spec.Epoch
     weight: spec.Gwei
-    best_child: int
-    best_descendant: int
+    best_child: Optional[int]
+    best_descendant: Optional[int]
 
 
 class ForkchoiceData(ObjStruct):
     prune_threshold: int
     justified_epoch: int
+    finalized_epoch: int
     nodes: ObjList[ForkchoiceNode]
     indices: ObjDict[spec.Root, int]
 

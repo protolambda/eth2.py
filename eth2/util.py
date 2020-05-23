@@ -1,4 +1,4 @@
-from typing import Type, TypeVar, Protocol, runtime_checkable, List, Dict, Tuple
+from typing import Type, TypeVar, Protocol, runtime_checkable, List, Dict, Union, Tuple
 
 from remerkleable.core import ObjType
 
@@ -81,7 +81,7 @@ class ObjDict(Dict[_K, _V]):
             if isinstance(vt, ToObjProtocol):
                 return {k: v.to_obj() for k, v in self.items()}
             else:
-                return dict(**self)
+                return dict(self)
 
     @classmethod
     def from_obj(cls: Type[_T], obj: ObjType) -> _T:
@@ -91,22 +91,32 @@ class ObjDict(Dict[_K, _V]):
         vt = cls.v_class
         if isinstance(kt, FromObjProtocol):
             if isinstance(vt, FromObjProtocol):
-                return cls(**{kt.from_obj(k): vt.from_obj(v) for k, v in obj.items()})
+                return cls({kt.from_obj(k): vt.from_obj(v) for k, v in obj.items()})
             else:
-                return cls(**{kt.from_obj(k): v for k, v in obj.items()})
+                return cls({kt.from_obj(k): v for k, v in obj.items()})
         else:
             if isinstance(vt, FromObjProtocol):
-                return cls(**{k: vt.from_obj(v) for k, v in obj.items()})
+                return cls({k: vt.from_obj(v) for k, v in obj.items()})
             else:
-                return cls(**obj)
+                return cls(obj)
 
 
 def _json_loader(t, obj):
-    if issubclass(t, FromObjProtocol):
-        return t.from_obj(obj)
-    if isinstance(obj, dict):
-        return t(**obj)
-    return t(obj)
+    if isinstance(t, type):
+        if issubclass(t, FromObjProtocol):
+            return t.from_obj(obj)
+        if isinstance(obj, dict):
+            return t(**obj)
+        return t(obj)
+    else:
+        if t.__origin__ is Union:
+            if len(t.__args__) != 2 or t.__args__[1] is not type(None):
+                raise Exception("Only Optional[V] is supported")
+            if obj is None:
+                return None
+            else:
+                return _json_loader(t.__args__[0], obj)
+        return obj
 
 
 class ObjStruct(object):
@@ -116,7 +126,7 @@ class ObjStruct(object):
 
     def to_obj(self) -> ObjType:
         m = {k: (v.to_obj() if isinstance(v, ToObjProtocol) else v)
-             for k, v in self.__annotations__.items()}
+             for k, v in [(k, getattr(self, k)) for k in self.__annotations__.keys()]}
         return m
 
     @classmethod

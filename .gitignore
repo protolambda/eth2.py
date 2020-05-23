@@ -106,3 +106,6 @@ venv.bak/
 
 # Sphinx docs output
 docs/_build
+
+# Debug outputs
+*.json
