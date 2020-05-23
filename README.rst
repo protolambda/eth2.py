@@ -52,7 +52,7 @@ Getting started
     async def start():
         # Customize this to use your Beacon endpoint
         address = 'http://localhost:4000'
-        # Or specify a custom
+        # Optionally bring in your own HTTP client
         # async with httpx.AsyncClient() as client:
         #     prov = Eth2HttpProvider(client, options=Eth2HttpOptions(api_base_url=address))
         async with Eth2HttpClient(options=Eth2HttpOptions(
