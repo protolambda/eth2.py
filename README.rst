@@ -1,3 +1,6 @@
+.. image:: https://raw.githubusercontent.com/protolambda/eth2/master/docs/_static/logo.png
+   :width: 100 px
+
 ``eth2``
 -----------------
 

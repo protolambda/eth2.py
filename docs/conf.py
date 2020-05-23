@@ -22,7 +22,7 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
-    'sphinx_autodoc_typehints',
+    # 'sphinx_autodoc_typehints', # TODO: class-based decorator type hinting is broken
 ]
 
 intersphinx_mapping = {
