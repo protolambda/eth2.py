@@ -43,6 +43,7 @@ Getting started
 ^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
+
     import trio
     from eth2.models import lighthouse
     from eth2.core import ContentType
@@ -69,6 +70,7 @@ Using the API model
 ^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
+
     from eth2.models.lighthouse import Eth2API
 
     async def fun(api: Eth2API):
@@ -93,6 +95,7 @@ Advanced API calls
 When you need to tweak individual API call settings
 
 .. code-block:: python
+
     from eth2.core import ContentType, APIEndpointFn
     from eth2.models.lighthouse import Eth2API, APIState
 
