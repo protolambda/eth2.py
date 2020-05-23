@@ -9,7 +9,7 @@ from remerkleable.core import View
 
 from eth2.core import ContentType, APIPath, APIEndpointFn, APIResult, FromObjProtocol, \
     APIMethodDecorator, APIProviderMethodImpl, Eth2Provider, Eth2EndpointImpl
-# from eth2.routes.proposal import Eth2API
+
 from eth2.util import ToObjProtocol
 
 

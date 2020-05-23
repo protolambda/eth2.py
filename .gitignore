@@ -109,3 +109,4 @@ docs/_build
 
 # Debug outputs
 *.json
+*.csv
