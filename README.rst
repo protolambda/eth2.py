@@ -22,7 +22,7 @@
 
 **Eth2.py**: Python API interface to the `Eth2.0 API <https://github.com/ethereum/eth2.0-apis>`_.
 
-If you are looking for the Eth2 spec, see ``eth2spec`` on `PyPi <https://pypi.org/project/eth2spec/>`_ and `GitHub <github.com/ethereum/eth2.0-specs>`_.
+If you are looking for the Eth2 spec, see ``eth2spec`` on `PyPi <https://pypi.org/project/eth2spec/>`_ and `GitHub <https://github.com/ethereum/eth2.0-specs>`_.
 
 Features
 ---------
