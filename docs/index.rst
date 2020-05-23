@@ -14,7 +14,7 @@ Eth2
     :target: https://pypi.python.org/pypi/eth2
 
 .. image:: https://github.com/protolambda/eth2.py/workflows/Eth2%20API%20Python%20CI/badge.svg
-    :target: https://github.com/protolambda/eth2/actions
+    :target: https://github.com/protolambda/eth2.py/actions
 
 **Eth2**: Python API interface to the `Eth2.0 API <https://github.com/ethereum/eth2.0-apis>`_.
 
