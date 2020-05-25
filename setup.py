@@ -6,7 +6,7 @@ with open("README.rst", "rt", encoding="utf8") as f:
 setup(
     name="eth2",
     description="Eth2 API",
-    version="0.0.1",
+    version="0.0.2",
     long_description=readme,
     long_description_content_type="text/x-rst",
     author="protolambda",
