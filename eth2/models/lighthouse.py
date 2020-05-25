@@ -224,6 +224,6 @@ class AdvancedAPI(Protocol):
 
 class Eth2API(Protocol):
     beacon: BeaconAPI
-    consensu: ConsensusAPI
+    consensus: ConsensusAPI
     network: NetworkAPI
     advanced: AdvancedAPI
