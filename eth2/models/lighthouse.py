@@ -27,7 +27,7 @@ class APIState(Container):
 
 class APIBlock(Container):
     root: spec.Root
-    block: spec.SignedBeaconBlock
+    beacon_block: spec.SignedBeaconBlock
 
 
 class HeadRef(Container):
