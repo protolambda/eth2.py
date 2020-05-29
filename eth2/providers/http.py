@@ -55,6 +55,10 @@ class Eth2HttpProvider(Eth2Provider):
                 headers = {}
                 if fn.resp_type is not None:
                     headers['Accept'] = fn.resp_type.value
+                else:
+                    if api.options.default_resp_type in fn.supports:
+                        headers['Accept'] = api.options.default_resp_type.value
+                    # TODO: No Accept header otherwise, or supply all different supported types into Accept?
 
                 req_type: ContentType
                 if fn.req_type is not None:
@@ -119,7 +123,7 @@ class Eth2HttpProvider(Eth2Provider):
                 elif content_type == ContentType.json:
                     if fn.typ is None:
                         resp_data = None
-                    elif isinstance(fn.typ, (FromObjProtocol, View)):
+                    elif isinstance(fn.typ, FromObjProtocol):
                         resp_data = fn.typ.from_obj(resp.json())
                     elif dataclasses.is_dataclass(fn.typ):
                         resp_data = fn.typ(**resp.json())
