@@ -1,6 +1,11 @@
 Changelog
 ==========
 
+v0.0.4
+-------
+
+Configure the default HTTP timeouts.
+
 v0.0.3
 -------
 
