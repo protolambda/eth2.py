@@ -17,14 +17,20 @@ class Eth2HttpOptions(object):
     api_base_url: str
     default_req_type: ContentType
     default_resp_type: ContentType
+    default_timeout: httpx.Timeout
 
     def __init__(self,
                  api_base_url: str = 'http://localhost:5052/',
                  default_req_type: ContentType = ContentType.json,
-                 default_resp_type: ContentType = ContentType.json):
+                 default_resp_type: ContentType = ContentType.json,
+                 default_timeout: httpx.Timeout = httpx.Timeout(connect_timeout=2.0,
+                                                                read_timeout=2.0,
+                                                                write_timeout=2.0,
+                                                                pool_timeout=2.0)):
         self.api_base_url = api_base_url
         self.default_req_type = default_req_type
         self.default_resp_type = default_resp_type
+        self.default_timeout = default_timeout
 
 
 M = TypeVar('M')
@@ -95,6 +101,7 @@ class Eth2HttpProvider(Eth2Provider):
                     params={k: (v.to_obj() if isinstance(v, ToObjProtocol) else v)
                             for k, v in kwargs.items() if v is not None},
                     headers=headers,
+                    timeout=api.options.default_timeout,  # TODO: option to change timeout on a function-call level
                 )
                 headers['Content-Type'] = req_type.value
 
