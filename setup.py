@@ -6,7 +6,7 @@ with open("README.rst", "rt", encoding="utf8") as f:
 setup(
     name="eth2",
     description="Eth2 API",
-    version="0.0.4",
+    version="0.0.5",
     long_description=readme,
     long_description_content_type="text/x-rst",
     author="protolambda",
@@ -23,7 +23,7 @@ setup(
     },
     install_requires=[
         "remerkleable>=0.1.16",
-        "eth2spec>=0.11.2",
+        "eth2spec>=0.12.1",
         "trio>=0.15.0,<0.16.0",
         "httpx>=0.12.1,<0.13.0",
     ],
