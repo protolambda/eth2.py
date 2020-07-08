@@ -1,6 +1,11 @@
 Changelog
 ==========
 
+v0.0.5
+-------
+
+Update to eth2spec v0.12
+
 v0.0.4
 -------
 
